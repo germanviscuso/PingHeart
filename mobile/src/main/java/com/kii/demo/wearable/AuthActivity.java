@@ -4,23 +4,16 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.LoaderManager.LoaderCallbacks;
-import android.content.CursorLoader;
-import android.content.Loader;
-import android.database.Cursor;
-import android.net.Uri;
+import android.content.Context;
 import android.os.AsyncTask;
-
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -32,15 +25,15 @@ import com.kii.cloud.storage.exception.app.AppException;
 import com.mariux.teleport.lib.TeleportClient;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 
 /**
- * A login screen that offers login via email/password.
+ * A login screen that offers login via 4 digit pin.
 
  */
-public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
+public class AuthActivity extends Activity {
+
+    private static final String TAG = AuthActivity.class.getName();
 
     private static final String KII_APP_ID = "073d2186";
     private static final String KII_APP_KEY = "27e4f6457e1daaa16d1bc7125073ce74";
@@ -48,78 +41,51 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
-    private UserLoginTask mLoginTask = null;
+    private UserSignInTask mSignInTask = null;
     private UserRegistrationTask mRegisterTask = null;
 
     private static final String STARTACTIVITY = "startActivity";
     TeleportClient mTeleportClient;
 
     // UI references.
-    private AutoCompleteTextView mEmailView;
     private EditText mPasswordView;
+    private EditText mPasswordVerifyView;
     private View mProgressView;
-    private View mLoginFormView;
+    private View mAuthFormView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_auth);
 
         mTeleportClient = new TeleportClient(this);
         Kii.initialize(KII_APP_ID, KII_APP_KEY, Kii.Site.US);
 
-        // Set up the login form.
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
-        populateAutoComplete();
+        // Set up the auth form.
+        mPasswordView = (EditText) findViewById(R.id.passw);
+        mPasswordVerifyView = (EditText) findViewById(R.id.passwVerify);
 
-        mPasswordView = (EditText) findViewById(R.id.password);
-        mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == R.id.login || id == EditorInfo.IME_NULL) {
-                    attemptAuth(false);
-                    return true;
-                }
-                return false;
-            }
-        });
+        Button mSignInButton = (Button) findViewById(R.id.sign_in_button);
+        Button mRegisterButton = (Button) findViewById(R.id.register_button);
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
-        Button mEmailRegisterButton = (Button) findViewById(R.id.email_register_button);
-        Button mTauntButton = (Button) findViewById(R.id.taunt_button);
-        Button mStartButton = (Button) findViewById(R.id.start_button);
-        mEmailSignInButton.setOnClickListener(new OnClickListener() {
+        mSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 attemptAuth(false);
             }
         });
-        mEmailRegisterButton.setOnClickListener(new OnClickListener() {
+
+        mRegisterButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 attemptAuth(true);
             }
         });
-        mTauntButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                sendMessage("Arrggh!");
-            }
-        });
-        mStartButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                sendMessage(STARTACTIVITY);
-            }
-        });
 
-        mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
+        mAuthFormView = findViewById(R.id.auth_form);
+        mProgressView = findViewById(R.id.progressBar);
     }
 
-    private void populateAutoComplete() {
-        getLoaderManager().initLoader(0, null, this);
-    }
 
     /**
      * Send message to Wear device via Teleport
@@ -158,7 +124,7 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
      */
     public void attemptAuth(boolean isRegistration) {
         if(!isRegistration) {
-            if (mLoginTask != null) {
+            if (mSignInTask != null) {
                 return;
             }
         } else {
@@ -168,32 +134,26 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
         }
 
         // Reset errors.
-        mEmailView.setError(null);
         mPasswordView.setError(null);
+        mPasswordVerifyView.setError(null);
 
-        // Store values at the time of the login attempt.
-        String email = mEmailView.getText().toString();
+        // Store values at the time of the auth attempt.
         String password = mPasswordView.getText().toString();
+        String passwordVerify = mPasswordVerifyView.getText().toString();
 
         boolean cancel = false;
         View focusView = null;
 
 
         // Check for a valid password, if the user entered one.
-        if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
+        if (TextUtils.isEmpty(password) || password.length() < 4) {
             mPasswordView.setError(getString(R.string.error_invalid_password));
             focusView = mPasswordView;
             cancel = true;
-        }
-
-        // Check for a valid email address.
-        if (TextUtils.isEmpty(email)) {
-            mEmailView.setError(getString(R.string.error_field_required));
-            focusView = mEmailView;
-            cancel = true;
-        } else if (!isEmailValid(email)) {
-            mEmailView.setError(getString(R.string.error_invalid_email));
-            focusView = mEmailView;
+        } else
+        if (password.compareTo(passwordVerify) != 0) {
+            mPasswordView.setError(getString(R.string.error_mismatch_password));
+            focusView = mPasswordView;
             cancel = true;
         }
 
@@ -206,23 +166,14 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
             // perform the user login attempt.
             showProgress(true);
             if(!isRegistration) {
-                mLoginTask = new UserLoginTask(email, password);
-                mLoginTask.execute((Void) null);
+                mSignInTask = new UserSignInTask(this, password);
+                mSignInTask.execute((Void) null);
             }
             else {
-                mRegisterTask = new UserRegistrationTask(email, password);
+                mRegisterTask = new UserRegistrationTask(this, password);
                 mRegisterTask.execute((Void) null);
             }
         }
-    }
-    private boolean isEmailValid(String email) {
-        //TODO: Replace this with your own logic
-        return email.contains("@");
-    }
-
-    private boolean isPasswordValid(String password) {
-        //TODO: Replace this with your own logic
-        return password.length() > 4;
     }
 
     /**
@@ -236,12 +187,12 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
             int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
-            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-            mLoginFormView.animate().setDuration(shortAnimTime).alpha(
+            mAuthFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+            mAuthFormView.animate().setDuration(shortAnimTime).alpha(
                     show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+                    mAuthFormView.setVisibility(show ? View.GONE : View.VISIBLE);
                 }
             });
 
@@ -257,75 +208,21 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
             // The ViewPropertyAnimator APIs are not available, so simply show
             // and hide the relevant UI components.
             mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+            mAuthFormView.setVisibility(show ? View.GONE : View.VISIBLE);
         }
-    }
-
-    @Override
-    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        return new CursorLoader(this,
-                // Retrieve data rows for the device user's 'profile' contact.
-                Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI,
-                        ContactsContract.Contacts.Data.CONTENT_DIRECTORY), ProfileQuery.PROJECTION,
-
-                // Select only email addresses.
-                ContactsContract.Contacts.Data.MIMETYPE +
-                        " = ?", new String[]{ContactsContract.CommonDataKinds.Email
-                .CONTENT_ITEM_TYPE},
-
-                // Show primary email addresses first. Note that there won't be
-                // a primary email address if the user hasn't specified one.
-                ContactsContract.Contacts.Data.IS_PRIMARY + " DESC");
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
-        List<String> emails = new ArrayList<String>();
-        cursor.moveToFirst();
-        while (!cursor.isAfterLast()) {
-            emails.add(cursor.getString(ProfileQuery.ADDRESS));
-            cursor.moveToNext();
-        }
-
-        addEmailsToAutoComplete(emails);
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> cursorLoader) {
-
-    }
-
-    private interface ProfileQuery {
-        String[] PROJECTION = {
-                ContactsContract.CommonDataKinds.Email.ADDRESS,
-                ContactsContract.CommonDataKinds.Email.IS_PRIMARY,
-        };
-
-        int ADDRESS = 0;
-        int IS_PRIMARY = 1;
-    }
-
-
-    private void addEmailsToAutoComplete(List<String> emailAddressCollection) {
-        //Create adapter to tell the AutoCompleteTextView what to show in its dropdown list.
-        ArrayAdapter<String> adapter =
-                new ArrayAdapter<String>(MobileActivity.this,
-                        android.R.layout.simple_dropdown_item_1line, emailAddressCollection);
-
-        mEmailView.setAdapter(adapter);
     }
 
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
      */
-    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+    public class UserSignInTask extends AsyncTask<Void, Void, Boolean> {
 
-        private final String mEmail;
+        private final Context mContext;
         private final String mPassword;
 
-        UserLoginTask(String email, String password) {
-            mEmail = email;
+        UserSignInTask(Context context, String password) {
+            mContext = context;
             mPassword = password;
         }
 
@@ -333,18 +230,21 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
         protected Boolean doInBackground(Void... params) {
             // attempt sign in against Kii Cloud
             try {
-                KiiUser.logIn(mEmail, mPassword);
+                String id = Installation.id(mContext);
+                Log.d(TAG, "Attempting sign in with id: " + id);
+                KiiUser.logIn(id, mPassword);
             } catch (IOException e) {
                 return false;
             } catch (AppException e) {
                 return false;
             }
+            Log.d(TAG, "Sign in successful");
             return true;
         }
 
         @Override
         protected void onPostExecute(final Boolean success) {
-            mLoginTask = null;
+            mSignInTask = null;
             showProgress(false);
 
             if (success) {
@@ -357,7 +257,7 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
 
         @Override
         protected void onCancelled() {
-            mLoginTask = null;
+            mSignInTask = null;
             showProgress(false);
         }
     }
@@ -368,11 +268,11 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
      */
     public class UserRegistrationTask extends AsyncTask<Void, Void, Boolean> {
 
-        private final String mEmail;
+        private final Context mContext;
         private final String mPassword;
 
-        UserRegistrationTask(String email, String password) {
-            mEmail = email;
+        UserRegistrationTask(Context context, String password) {
+            mContext = context;
             mPassword = password;
         }
 
@@ -380,7 +280,9 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
         protected Boolean doInBackground(Void... params) {
             // attempt registration against Kii Cloud
             try {
-                KiiUser.Builder builder = KiiUser.builderWithEmail(mEmail);
+                String id = Installation.id(mContext);
+                Log.d(TAG, "Attempting registration with id: " + id);
+                KiiUser.Builder builder = KiiUser.builderWithName(id);
                 KiiUser user = builder.build();
                 user.register(mPassword);
             }
@@ -391,6 +293,7 @@ public class MobileActivity extends Activity implements LoaderCallbacks<Cursor>{
             } catch (IOException e) {
                 return false;
             }
+            Log.d(TAG, "Registration successful");
             return true;
         }
 
