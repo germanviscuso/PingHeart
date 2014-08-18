@@ -97,6 +97,13 @@ public class WearActivity extends Activity implements SensorEventListener{
         }
     }
 
+    /**
+     * Send message to Mobile device via Teleport
+     */
+    public void sendMessage(String msg) {
+        mTeleportClient.sendMessage(msg, null);
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -110,6 +117,7 @@ public class WearActivity extends Activity implements SensorEventListener{
         try {
             latch.await();
             if(sensorEvent.values[0] > 0){
+                sendMessage(String.valueOf(sensorEvent.values[0]));
                 Log.d(TAG, "sensor event: " + sensorEvent.accuracy + " = " + sensorEvent.values[0]);
                 rate.setText(String.valueOf(sensorEvent.values[0]));
                 accuracy.setText("Accuracy: "+sensorEvent.accuracy);

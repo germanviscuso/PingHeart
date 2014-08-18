@@ -24,7 +24,7 @@ public class WearService extends TeleportService {
             if (path.equals("startActivity")){
 
                 Intent startIntent = new Intent(getBaseContext(), WearActivity.class);
-                startIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(startIntent);
             } else {
                 Log.i(TAG, "Got a message with path: " + path);

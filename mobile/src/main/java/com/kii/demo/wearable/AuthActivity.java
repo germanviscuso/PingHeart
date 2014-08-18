@@ -5,18 +5,16 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.kii.cloud.storage.Kii;
@@ -44,9 +42,6 @@ public class AuthActivity extends Activity {
     private UserSignInTask mSignInTask = null;
     private UserRegistrationTask mRegisterTask = null;
 
-    private static final String STARTACTIVITY = "startActivity";
-    TeleportClient mTeleportClient;
-
     // UI references.
     private EditText mPasswordView;
     private EditText mPasswordVerifyView;
@@ -58,7 +53,6 @@ public class AuthActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_auth);
 
-        mTeleportClient = new TeleportClient(this);
         Kii.initialize(KII_APP_ID, KII_APP_KEY, Kii.Site.US);
 
         // Set up the auth form.
@@ -84,37 +78,6 @@ public class AuthActivity extends Activity {
 
         mAuthFormView = findViewById(R.id.auth_form);
         mProgressView = findViewById(R.id.progressBar);
-    }
-
-
-    /**
-     * Send message to Wear device via Teleport
-     */
-    public void sendMessage(String msg) {
-        mTeleportClient.setOnGetMessageTask(new ShowToastFromOnGetMessageTask());
-        mTeleportClient.sendMessage(msg, null);
-    }
-
-    public class ShowToastFromOnGetMessageTask extends TeleportClient.OnGetMessageTask {
-        @Override
-        protected void onPostExecute(String path) {
-            Toast.makeText(getApplicationContext(), "Message - " + path, Toast.LENGTH_SHORT).show();
-            //let's reset the task (otherwise it will be executed only once)
-            mTeleportClient.setOnGetMessageTask(new ShowToastFromOnGetMessageTask());
-        }
-    }
-
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mTeleportClient.connect();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mTeleportClient.disconnect();
     }
 
     /**
@@ -186,7 +149,6 @@ public class AuthActivity extends Activity {
         // the progress spinner.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
             int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
-
             mAuthFormView.setVisibility(show ? View.GONE : View.VISIBLE);
             mAuthFormView.animate().setDuration(shortAnimTime).alpha(
                     show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
@@ -195,7 +157,6 @@ public class AuthActivity extends Activity {
                     mAuthFormView.setVisibility(show ? View.GONE : View.VISIBLE);
                 }
             });
-
             mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
             mProgressView.animate().setDuration(shortAnimTime).alpha(
                     show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
@@ -248,6 +209,8 @@ public class AuthActivity extends Activity {
             showProgress(false);
 
             if (success) {
+                Intent intent = new Intent(mContext, MainActivity.class);
+                startActivity(intent);
                 finish();
             } else {
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
@@ -303,6 +266,8 @@ public class AuthActivity extends Activity {
             showProgress(false);
 
             if (success) {
+                Intent intent = new Intent(mContext, MainActivity.class);
+                startActivity(intent);
                 finish();
             } else {
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
