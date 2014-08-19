@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -41,10 +42,13 @@ public class AuthActivity extends Activity {
      */
     private UserSignInTask mSignInTask = null;
     private UserRegistrationTask mRegisterTask = null;
+    private UserTokenSignInTask mTokenSignInTask = null;
 
     // UI references.
     private EditText mPasswordView;
     private EditText mPasswordVerifyView;
+    private CheckBox mRememberCheckbox;
+    private boolean rememberMe = false;
     private View mProgressView;
     private View mAuthFormView;
 
@@ -58,6 +62,7 @@ public class AuthActivity extends Activity {
         // Set up the auth form.
         mPasswordView = (EditText) findViewById(R.id.passw);
         mPasswordVerifyView = (EditText) findViewById(R.id.passwVerify);
+        mRememberCheckbox = (CheckBox) findViewById(R.id.rememberBox);
 
         Button mSignInButton = (Button) findViewById(R.id.sign_in_button);
         Button mRegisterButton = (Button) findViewById(R.id.register_button);
@@ -68,16 +73,33 @@ public class AuthActivity extends Activity {
                 attemptAuth(false);
             }
         });
-
         mRegisterButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 attemptAuth(true);
             }
         });
+        mRememberCheckbox.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                rememberMe = ((CheckBox) v).isChecked();
+            }
+        });
 
         mAuthFormView = findViewById(R.id.auth_form);
         mProgressView = findViewById(R.id.progressBar);
+
+        // Now that the UI is set up we try to login via previous user access token
+        tryLoginWithToken();
+    }
+
+    private void tryLoginWithToken() {
+        String token = Installation.loadLoginToken(this);
+        if(token != null){
+            showProgress(true);
+            mTokenSignInTask = new UserTokenSignInTask(this, token);
+            mTokenSignInTask.execute((Void) null);
+        }
     }
 
     /**
@@ -129,11 +151,11 @@ public class AuthActivity extends Activity {
             // perform the user login attempt.
             showProgress(true);
             if(!isRegistration) {
-                mSignInTask = new UserSignInTask(this, password);
+                mSignInTask = new UserSignInTask(this, password, rememberMe);
                 mSignInTask.execute((Void) null);
             }
             else {
-                mRegisterTask = new UserRegistrationTask(this, password);
+                mRegisterTask = new UserRegistrationTask(this, password, rememberMe);
                 mRegisterTask.execute((Void) null);
             }
         }
@@ -174,17 +196,19 @@ public class AuthActivity extends Activity {
     }
 
     /**
-     * Represents an asynchronous login/registration task used to authenticate
+     * Represents an asynchronous login task used to authenticate
      * the user.
      */
     public class UserSignInTask extends AsyncTask<Void, Void, Boolean> {
 
         private final Context mContext;
         private final String mPassword;
+        private final boolean mRememberMe;
 
-        UserSignInTask(Context context, String password) {
+        UserSignInTask(Context context, String password, boolean rememberMe) {
             mContext = context;
             mPassword = password;
+            mRememberMe = rememberMe;
         }
 
         @Override
@@ -194,9 +218,13 @@ public class AuthActivity extends Activity {
                 String id = Installation.id(mContext);
                 Log.d(TAG, "Attempting sign in with id: " + id);
                 KiiUser.logIn(id, mPassword);
-            } catch (IOException e) {
-                return false;
-            } catch (AppException e) {
+                if(mRememberMe) {
+                    Log.d(TAG, "Storing access token...");
+                    String accessToken = KiiUser.getCurrentUser().getAccessToken();
+                    // Now we store the token in a local file
+                    Installation.saveLoginToken(mContext, accessToken);
+                }
+            } catch (Exception e) {
                 return false;
             }
             Log.d(TAG, "Sign in successful");
@@ -226,17 +254,66 @@ public class AuthActivity extends Activity {
     }
 
     /**
-     * Represents an asynchronous login/registration task used to authenticate
+     * Represents an asynchronous login task used to authenticate
+     * the user via an access token.
+     */
+    public class UserTokenSignInTask extends AsyncTask<Void, Void, Boolean> {
+
+        private final Context mContext;
+        private final String mToken;
+
+        UserTokenSignInTask(Context context, String token) {
+            mContext = context;
+            mToken = token;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            // attempt sign in against Kii Cloud using an access token
+            try {
+                Log.d(TAG, "Attempting sign in with access token");
+                KiiUser.loginWithToken(mToken);
+            } catch (Exception e) {
+                return false;
+            }
+            Log.d(TAG, "Sign in successful");
+            return true;
+        }
+
+        @Override
+        protected void onPostExecute(final Boolean success) {
+            mTokenSignInTask = null;
+            showProgress(false);
+            if (success) {
+                Intent intent = new Intent(mContext, MainActivity.class);
+                startActivity(intent);
+                finish();
+            } else {
+                Log.e(TAG, "Error signing in with token");
+            }
+        }
+
+        @Override
+        protected void onCancelled() {
+            mTokenSignInTask = null;
+            showProgress(false);
+        }
+    }
+
+    /**
+     * Represents an asynchronous registration task used to authenticate
      * the user.
      */
     public class UserRegistrationTask extends AsyncTask<Void, Void, Boolean> {
 
         private final Context mContext;
         private final String mPassword;
+        private final boolean mRememberMe;
 
-        UserRegistrationTask(Context context, String password) {
+        UserRegistrationTask(Context context, String password, boolean rememberMe) {
             mContext = context;
             mPassword = password;
+            mRememberMe = rememberMe;
         }
 
         @Override
@@ -248,12 +325,14 @@ public class AuthActivity extends Activity {
                 KiiUser.Builder builder = KiiUser.builderWithName(id);
                 KiiUser user = builder.build();
                 user.register(mPassword);
+                if(mRememberMe) {
+                    Log.d(TAG, "Storing access token...");
+                    String accessToken = KiiUser.getCurrentUser().getAccessToken();
+                    // Now we store the token in a local file
+                    Installation.saveLoginToken(mContext, accessToken);
+                }
             }
-              catch (IllegalArgumentException e) {
-                return false; // wrong format
-            } catch (AppException e) {
-                return false;
-            } catch (IOException e) {
+              catch (Exception e) {
                 return false;
             }
             Log.d(TAG, "Registration successful");

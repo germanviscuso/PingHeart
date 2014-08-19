@@ -4,7 +4,7 @@
     <string name="app_name">PingHeart</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-    <!-- Strings related to login -->
+    <string name="action_logout">Log out</string>
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password (optional)</string>
     <string name="action_sign_in">Sign in</string>
@@ -19,5 +19,6 @@
     <string name="error_field_required">This field is required</string>
     <string name="title_activity_main">PingHeart</string>
     <string name="heart_rate">00</string>
+    <string name="rememberMe">Remember me</string>
 
 </resources>

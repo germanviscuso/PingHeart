@@ -19,10 +19,6 @@
         <activity
             android:name=".MainActivity"
             android:label="@string/title_activity_main">
-            <!--android:parentActivityName=".AuthActivity" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".AuthActivity" /-->
         </activity>
 
         <meta-data

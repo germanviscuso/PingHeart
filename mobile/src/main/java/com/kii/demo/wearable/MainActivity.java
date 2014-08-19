@@ -11,6 +11,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.kii.cloud.storage.KiiUser;
 import com.kii.demo.wearable.R;
 import com.mariux.teleport.lib.TeleportClient;
 
@@ -100,6 +101,15 @@ public class MainActivity extends Activity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         if (id == R.id.action_settings) {
+            //TODO
+            return true;
+        }
+        if (id == R.id.action_logout) {
+            Installation.deleteLoginToken(this);
+            KiiUser.logOut();
+            Intent intent = new Intent(this, AuthActivity.class);
+            startActivity(intent);
+            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);

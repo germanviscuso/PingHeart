@@ -60,6 +60,14 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/action_register"
                 android:textStyle="bold"/>
+
+            <CheckBox
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/rememberMe"
+                android:id="@+id/rememberBox"
+                android:layout_gravity="center_horizontal"
+                android:checked="false" />
         </LinearLayout>
     </ScrollView>
 
