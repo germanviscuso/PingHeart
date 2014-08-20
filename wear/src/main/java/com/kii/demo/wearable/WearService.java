@@ -18,7 +18,6 @@ public class WearService extends TeleportService {
     public void onCreate() {
         super.onCreate();
         setOnGetMessageTask(new ActivityManagementTask());
-        //setOnGetMessageTask(new NotifyFromOnGetMessageTask());
     }
 
     //Task that shows the path of a received message
@@ -42,16 +41,4 @@ public class WearService extends TeleportService {
             setOnGetMessageTask(new ActivityManagementTask());
         }
     }
-
-    //Task that shows the path of a received message
-    public class NotifyFromOnGetMessageTask extends TeleportService.OnGetMessageTask {
-
-        @Override
-        protected void onPostExecute(String  path) {
-            Log.d(TAG, "Got a message with path: " + path);
-            //let's reset the task (otherwise it will be executed only once)
-            setOnGetMessageTask(new NotifyFromOnGetMessageTask());
-        }
-    }
-
 }

@@ -269,9 +269,10 @@ public class AuthActivity extends Activity {
                 Log.d(TAG, "Attempting sign in with access token");
                 KiiUser.loginWithToken(mToken);
             } catch (Exception e) {
+                Log.e(TAG, e.toString());
                 return false;
             }
-            Log.d(TAG, "Sign in successful");
+            Log.d(TAG, "Sign in successful. User id: " + KiiUser.getCurrentUser().getUsername());
             return true;
         }
 

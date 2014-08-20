@@ -22,5 +22,7 @@
     <string name="rememberMe">Remember me</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
+    <string name="action_startstop_watch">Start/Stop Watch</string>
+    <string name="action_startstop_service">Start/Stop Service</string>
 
 </resources>

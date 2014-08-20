@@ -3,18 +3,10 @@ package com.kii.demo.wearable;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
-
-import com.kii.cloud.storage.Kii;
-import com.kii.cloud.storage.KiiBucket;
-import com.kii.cloud.storage.KiiObject;
 import com.kii.cloud.storage.KiiUser;
-import com.kii.cloud.storage.callback.KiiObjectCallBack;
 import com.mariux.teleport.lib.TeleportClient;
 
 public class MainActivity extends Activity {
@@ -26,7 +18,8 @@ public class MainActivity extends Activity {
 
     TeleportClient mTeleportClient;
 
-    private static double lastHRValue = 0.0;
+    private static boolean startedWatch = false;
+    private static boolean startedService = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,23 +36,10 @@ public class MainActivity extends Activity {
 
         mHRView = (TextView) findViewById(R.id.heartRate);
 
-        Button mStartButton = (Button) findViewById(R.id.start_button);
-        mStartButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startService(new Intent(DataService.class.getName()));
-                //mTeleportClient.sendMessage(AppConfig.START_ACTIVITY, null);
-            }
-        });
-
-        Button mStopButton = (Button) findViewById(R.id.stop_button);
-        mStopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                stopService(new Intent(DataService.class.getName()));
-                //mTeleportClient.sendMessage(AppConfig.STOP_ACTIVITY, null);
-            }
-        });
+        if(AppConfig.AUTONOMOUS_OPERATION){
+            startService(new Intent(DataService.class.getName()));
+            startedService = true;
+        }
     }
 
     public class ShowHRFromOnGetMessageTask extends TeleportClient.OnGetMessageTask {
@@ -70,18 +50,6 @@ public class MainActivity extends Activity {
             try {
                 double value = Double.valueOf(path);
                 mHRView.setText(path);
-                /*if(value != lastHRValue) {
-                    KiiBucket bucket = Kii.user().bucket(AppConfig.USER_BUCKET);
-                    KiiObject object = bucket.object();
-                    object.set("value", value);
-                    object.save(new KiiObjectCallBack() {
-                        @Override
-                        public void onSaveCompleted(int token, KiiObject object, Exception exception) {
-                            Log.d(TAG, "Heart rate data sent to cloud");
-                        }
-                    });
-                    lastHRValue = value;
-                }*/
             }
             catch(Exception e){
                 //not a heart rate value, discard
@@ -118,6 +86,30 @@ public class MainActivity extends Activity {
         int id = item.getItemId();
         if (id == R.id.action_settings) {
             //TODO add timer period setting
+            return true;
+        }
+        if (id == R.id.action_startstop_watch) {
+            if (mTeleportClient != null) {
+                if (startedWatch){
+                    mTeleportClient.sendMessage(AppConfig.STOP_ACTIVITY, null);
+                    startedWatch = false;
+                }
+                else {
+                    mTeleportClient.sendMessage(AppConfig.START_ACTIVITY, null);
+                    startedWatch = true;
+                }
+            }
+            return true;
+        }
+        if (id == R.id.action_startstop_service) {
+            if(startedService) {
+                stopService(new Intent(DataService.class.getName()));
+                startedService = false;
+            }
+            else {
+                startService(new Intent(DataService.class.getName()));
+                startedService = true;
+            }
             return true;
         }
         if (id == R.id.action_logout) {

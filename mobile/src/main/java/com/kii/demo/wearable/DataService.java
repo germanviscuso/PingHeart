@@ -24,15 +24,26 @@ public class DataService extends Service {
     private UserTokenSignInTask mTokenSignInTask = null;
     TeleportClient mTeleportClient;
     private static double lastHRValue = 0.0;
-    public static int timeGap = 120; // in seconds
-    private Timer timer;
+    public static int period = 3000; // in seconds
+    public static int duration = period + 60; // in seconds, always less than period
+    private Timer startTimer;
+    private Timer stopTimer;
 
-    private TimerTask updateTask = new TimerTask() {
+    private TimerTask startTask = new TimerTask() {
         @Override
         public void run() {
-            Log.i(TAG, "Timer task called");
+            Log.i(TAG, "Start timer called");
             if (mTeleportClient != null)
                 mTeleportClient.sendMessage(AppConfig.START_ACTIVITY, null);
+        }
+    };
+
+    private TimerTask stopTask = new TimerTask() {
+        @Override
+        public void run() {
+            Log.i(TAG, "Stop timer called");
+            if (mTeleportClient != null)
+                mTeleportClient.sendMessage(AppConfig.STOP_ACTIVITY, null);
         }
     };
 
@@ -51,9 +62,13 @@ public class DataService extends Service {
         //let's set the two task to be executed when a message is received
         mTeleportClient.setOnGetMessageTask(new SaveHRFromOnGetMessageTask());
         mTeleportClient.connect();
-        timer = new Timer("DataTimer");
-        timer.schedule(updateTask, 1000L, timeGap * 1000L);
         loginWithToken();
+        startTimer = new Timer("StartTimer");
+        if(AppConfig.AUTONOMOUS_OPERATION)
+            startTimer.schedule(startTask, 1000L, period * 1000L);
+        stopTimer = new Timer("StopTimer");
+        if(AppConfig.AUTONOMOUS_OPERATION)
+            stopTimer.schedule(stopTask, 1000L, duration * 1000L);
     }
 
     private void loginWithToken() {
@@ -102,9 +117,13 @@ public class DataService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.i(TAG, "Destroying service");
+        //if (mTeleportClient != null)
+            //mTeleportClient.sendMessage(AppConfig.STOP_ACTIVITY, null);
         mTeleportClient.disconnect();
-        timer.cancel();
-        timer = null;
+        startTimer.cancel();
+        startTimer = null;
+        stopTimer.cancel();
+        stopTimer = null;
     }
 
     /**
@@ -130,7 +149,7 @@ public class DataService extends Service {
             } catch (Exception e) {
                 return false;
             }
-            Log.d(TAG, "Sign in successful");
+            Log.d(TAG, "Sign in successful. User id: " + KiiUser.getCurrentUser().getUsername());
             return true;
         }
 
