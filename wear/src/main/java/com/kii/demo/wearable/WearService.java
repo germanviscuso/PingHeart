@@ -10,6 +10,10 @@ public class WearService extends TeleportService {
 
     private static final String TAG = WearService.class.getName();
 
+    // Teleport config
+    public static final String START_ACTIVITY = "startActivity";
+    public static final String STOP_ACTIVITY = "stopActivity";
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -21,18 +25,18 @@ public class WearService extends TeleportService {
     public class ActivityManagementTask extends TeleportService.OnGetMessageTask {
         @Override
         protected void onPostExecute(String  path) {
-            if (path.equals("startActivity")){
+            if (path.equals(START_ACTIVITY)){
                 Intent startIntent = new Intent(getBaseContext(), WearActivity.class);
                 startIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startIntent.putExtra("keep", true);
                 startActivity(startIntent);
-            } else if (path.equals("stopActivity")) {
+            } else if (path.equals(STOP_ACTIVITY)) {
                 Intent stopIntent = new Intent(getBaseContext(), WearActivity.class);
                 stopIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 stopIntent.putExtra("keep", false);
                 startActivity(stopIntent);
             } else {
-                Log.i(TAG, "Got a message with path: " + path);
+                Log.d(TAG, "Got a message with path: " + path);
             }
             //let's reset the task (otherwise it will be executed only once)
             setOnGetMessageTask(new ActivityManagementTask());
@@ -44,7 +48,7 @@ public class WearService extends TeleportService {
 
         @Override
         protected void onPostExecute(String  path) {
-            Log.i(TAG, "Got a message with path: " + path);
+            Log.d(TAG, "Got a message with path: " + path);
             //let's reset the task (otherwise it will be executed only once)
             setOnGetMessageTask(new NotifyFromOnGetMessageTask());
         }

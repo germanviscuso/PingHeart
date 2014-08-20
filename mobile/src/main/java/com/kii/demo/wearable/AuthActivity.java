@@ -6,6 +6,8 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,6 +31,7 @@ public class AuthActivity extends Activity {
 
     private static final String TAG = AuthActivity.class.getName();
 
+
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
@@ -48,7 +51,6 @@ public class AuthActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_auth);
-
         Kii.initialize(AppConfig.KII_APP_ID, AppConfig.KII_APP_KEY, AppConfig.KII_SITE);
 
         // Set up the auth form.
@@ -88,6 +90,7 @@ public class AuthActivity extends Activity {
     private void tryLoginWithToken() {
         String token = Settings.loadAccessToken(this);
         if(token != null){
+            Log.d(TAG, "Token: " + token);
             showProgress(true);
             mTokenSignInTask = new UserTokenSignInTask(this, token);
             mTokenSignInTask.execute((Void) null);

@@ -1,6 +1,7 @@
 package com.kii.demo.wearable;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -13,6 +14,7 @@ public class Settings {
     private static final String INSTALLATION = "INSTALLATION";
     private static String loginToken = null;
     private static final String ACCESSTOKEN = "LOGINTOKEN";
+    private static final String PREF_NAME = "SETTINGS";
 
 
     public synchronized static String id(Context context) {
