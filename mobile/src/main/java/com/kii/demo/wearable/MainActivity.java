@@ -3,16 +3,18 @@ package com.kii.demo.wearable;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import com.kii.cloud.storage.Kii;
+import com.kii.cloud.storage.KiiBucket;
+import com.kii.cloud.storage.KiiObject;
 import com.kii.cloud.storage.KiiUser;
-import com.kii.demo.wearable.R;
+import com.kii.cloud.storage.callback.KiiObjectCallBack;
 import com.mariux.teleport.lib.TeleportClient;
 
 public class MainActivity extends Activity {
@@ -24,7 +26,10 @@ public class MainActivity extends Activity {
 
     // Teleport references
     private static final String STARTACTIVITY = "startActivity";
+    private static final String STOPACTIVITY = "stopActivity";
     TeleportClient mTeleportClient;
+
+    private static double lastHRValue = 0.0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,41 +39,55 @@ public class MainActivity extends Activity {
         //String message = intent.getStringExtra(AuthActivity.EXTRA_MESSAGE);
         setContentView(R.layout.activity_main);
 
+        startService(new Intent(DataService.class.getName()));
+
         mTeleportClient = new TeleportClient(this);
+        //let's set the two task to be executed when an item is synced or a message is received
+        mTeleportClient.setOnGetMessageTask(new ShowHRFromOnGetMessageTask());
 
         mHRView = (TextView) findViewById(R.id.heartRate);
-        Button mReadHRButton = (Button) findViewById(R.id.hr_button);
 
-        mReadHRButton.setOnClickListener(new View.OnClickListener() {
+        Button mStartButton = (Button) findViewById(R.id.start_button);
+        mStartButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                requestHeartRate();
+                stopService(new Intent(DataService.class.getName()));
+                mTeleportClient.sendMessage(STARTACTIVITY, null);
+            }
+        });
+
+        Button mStopButton = (Button) findViewById(R.id.stop_button);
+        mStopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mTeleportClient.sendMessage(STOPACTIVITY, null);
             }
         });
     }
 
-    private void requestHeartRate() {
-        sendMessage(STARTACTIVITY);
-    }
-
-    /**
-     * Send message to Wear device via Teleport
-     */
-    public void sendMessage(String msg) {
-        mTeleportClient.setOnGetMessageTask(new ShowHRFromOnGetMessageTask());
-        mTeleportClient.sendMessage(msg, null);
-    }
-
     public class ShowHRFromOnGetMessageTask extends TeleportClient.OnGetMessageTask {
+
         @Override
         protected void onPostExecute(String path) {
             //Toast.makeText(getApplicationContext(), "Message - " + path, Toast.LENGTH_SHORT).show();
             try {
-                float value = Float.valueOf(path);
+                double value = Double.valueOf(path);
                 mHRView.setText(path);
+                if(value != lastHRValue) {
+                    KiiBucket bucket = Kii.user().bucket("heartrate");
+                    KiiObject object = bucket.object();
+                    object.set("value", value);
+                    object.save(new KiiObjectCallBack() {
+                        @Override
+                        public void onSaveCompleted(int token, KiiObject object, Exception exception) {
+                            Log.d(TAG, "Heart rate data saved to Kii Cloud");
+                        }
+                    });
+                    lastHRValue = value;
+                }
             }
             catch(Exception e){
-                //not a heart rate value, disregard
+                //not a heart rate value, discard
             }
             //let's reset the task (otherwise it will be executed only once)
             mTeleportClient.setOnGetMessageTask(new ShowHRFromOnGetMessageTask());
@@ -105,7 +124,7 @@ public class MainActivity extends Activity {
             return true;
         }
         if (id == R.id.action_logout) {
-            Installation.deleteLoginToken(this);
+            Settings.deleteLoginToken(this);
             KiiUser.logOut();
             Intent intent = new Intent(this, AuthActivity.class);
             startActivity(intent);

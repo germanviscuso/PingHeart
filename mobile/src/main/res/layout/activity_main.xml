@@ -29,8 +29,15 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Read Heart Rate"
-            android:id="@+id/hr_button"
+            android:text="@string/start"
+            android:id="@+id/start_button"
+            android:layout_gravity="center_horizontal" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/stop"
+            android:id="@+id/stop_button"
             android:layout_gravity="center_horizontal" />
 
     </LinearLayout>

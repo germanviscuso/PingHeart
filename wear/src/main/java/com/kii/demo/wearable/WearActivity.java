@@ -17,6 +17,7 @@
 package com.kii.demo.wearable;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -24,6 +25,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.wearable.view.WatchViewStub;
 import android.util.Log;
+import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,13 +47,25 @@ public class WearActivity extends Activity implements SensorEventListener{
     private CountDownLatch latch;
 
     TeleportClient mTeleportClient;
-    TeleportClient.OnGetMessageTask mMessageTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
-        initializeTeleport();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        //getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        Intent intent = this.getIntent();
+        if(intent != null && intent.getExtras() != null && intent.getExtras().containsKey("keep")){
+            boolean keep = intent.getExtras().getBoolean("keep");
+            if(keep)
+            {
+                //startactivity only code goes here
+            }
+        }
+        //instantiate the TeleportClient with the application Context
+        mTeleportClient = new TeleportClient(this);
+        //let's set the two task to be executed when an item is synced or a message is received
+        mTeleportClient.setOnGetMessageTask(new ShowToastFromOnGetMessageTask());
         latch = new CountDownLatch(1);
         final WatchViewStub stub = (WatchViewStub) findViewById(R.id.watch_view_stub);
         stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
@@ -75,13 +89,16 @@ public class WearActivity extends Activity implements SensorEventListener{
 
     }
 
-    private void initializeTeleport(){
-        //instantiate the TeleportClient with the application Context
-        mTeleportClient = new TeleportClient(this);
-        //Create and initialize task
-        mMessageTask = new ShowToastFromOnGetMessageTask();
-        //let's set the two task to be executed when an item is synced or a message is received
-        mTeleportClient.setOnGetMessageTask(mMessageTask);
+    @Override
+    protected void onNewIntent(Intent intent)
+    {
+        super.onNewIntent(intent);
+        if(intent.getExtras() != null && intent.getExtras().containsKey("keep")) {
+            boolean keep = intent.getExtras().getBoolean("keep");
+            if (!keep) {
+                finish();
+            }
+        }
     }
 
     //Task that shows the path of a received message
@@ -90,18 +107,10 @@ public class WearActivity extends Activity implements SensorEventListener{
         @Override
         protected void onPostExecute(String  path) {
 
-            Toast.makeText(getApplicationContext(), "Message - " + path, Toast.LENGTH_SHORT).show();
-
+            //Toast.makeText(getApplicationContext(), "Message - " + path, Toast.LENGTH_SHORT).show();
             //let's reset the task (otherwise it will be executed only once)
             mTeleportClient.setOnGetMessageTask(new ShowToastFromOnGetMessageTask());
         }
-    }
-
-    /**
-     * Send message to Mobile device via Teleport
-     */
-    public void sendMessage(String msg) {
-        mTeleportClient.sendMessage(msg, null);
     }
 
     @Override
@@ -117,7 +126,7 @@ public class WearActivity extends Activity implements SensorEventListener{
         try {
             latch.await();
             if(sensorEvent.values[0] > 0){
-                sendMessage(String.valueOf(sensorEvent.values[0]));
+                mTeleportClient.sendMessage(String.valueOf(sensorEvent.values[0]), null);
                 Log.d(TAG, "sensor event: " + sensorEvent.accuracy + " = " + sensorEvent.values[0]);
                 rate.setText(String.valueOf(sensorEvent.values[0]));
                 accuracy.setText("Accuracy: "+sensorEvent.accuracy);
@@ -127,7 +136,6 @@ public class WearActivity extends Activity implements SensorEventListener{
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage(), e);
         }
-
     }
 
     @Override

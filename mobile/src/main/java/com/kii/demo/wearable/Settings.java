@@ -8,11 +8,11 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.UUID;
 
-public class Installation {
+public class Settings {
     private static String sID = null;
     private static final String INSTALLATION = "INSTALLATION";
     private static String loginToken = null;
-    private static final String LOGINTOKEN = "LOGINTOKEN";
+    private static final String ACCESSTOKEN = "LOGINTOKEN";
 
 
     public synchronized static String id(Context context) {
@@ -29,9 +29,9 @@ public class Installation {
         return sID;
     }
 
-    public synchronized static String loadLoginToken(Context context) {
+    public synchronized static String loadAccessToken(Context context) {
         if (loginToken == null) {
-            File tokenFile = new File(context.getFilesDir(), LOGINTOKEN);
+            File tokenFile = new File(context.getFilesDir(), ACCESSTOKEN);
             try {
                 if (tokenFile.exists())
                     loginToken = readFile(tokenFile);
@@ -42,8 +42,8 @@ public class Installation {
         return loginToken;
     }
 
-    public synchronized static String saveLoginToken(Context context, String token) {
-        File tokenFile = new File(context.getFilesDir(), LOGINTOKEN);
+    public synchronized static String saveAccessToken(Context context, String token) {
+        File tokenFile = new File(context.getFilesDir(), ACCESSTOKEN);
         try {
             writeFile(tokenFile, token);
             loginToken = token;
@@ -54,7 +54,7 @@ public class Installation {
     }
 
     public synchronized static boolean deleteLoginToken(Context context){
-        boolean success = deleteLocalFile(context, LOGINTOKEN);
+        boolean success = deleteLocalFile(context, ACCESSTOKEN);
         if(success)
             loginToken = null;
         return success;

@@ -16,14 +16,9 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.kii.cloud.storage.Kii;
 import com.kii.cloud.storage.KiiUser;
-import com.kii.cloud.storage.exception.app.AppException;
-import com.mariux.teleport.lib.TeleportClient;
-
-import java.io.IOException;
 
 
 /**
@@ -33,9 +28,6 @@ import java.io.IOException;
 public class AuthActivity extends Activity {
 
     private static final String TAG = AuthActivity.class.getName();
-
-    private static final String KII_APP_ID = "073d2186";
-    private static final String KII_APP_KEY = "27e4f6457e1daaa16d1bc7125073ce74";
 
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
@@ -57,7 +49,7 @@ public class AuthActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_auth);
 
-        Kii.initialize(KII_APP_ID, KII_APP_KEY, Kii.Site.US);
+        Kii.initialize(AppConfig.KII_APP_ID, AppConfig.KII_APP_KEY, AppConfig.KII_SITE);
 
         // Set up the auth form.
         mPasswordView = (EditText) findViewById(R.id.passw);
@@ -94,7 +86,7 @@ public class AuthActivity extends Activity {
     }
 
     private void tryLoginWithToken() {
-        String token = Installation.loadLoginToken(this);
+        String token = Settings.loadAccessToken(this);
         if(token != null){
             showProgress(true);
             mTokenSignInTask = new UserTokenSignInTask(this, token);
@@ -215,14 +207,14 @@ public class AuthActivity extends Activity {
         protected Boolean doInBackground(Void... params) {
             // attempt sign in against Kii Cloud
             try {
-                String id = Installation.id(mContext);
+                String id = Settings.id(mContext);
                 Log.d(TAG, "Attempting sign in with id: " + id);
                 KiiUser.logIn(id, mPassword);
                 if(mRememberMe) {
                     Log.d(TAG, "Storing access token...");
                     String accessToken = KiiUser.getCurrentUser().getAccessToken();
                     // Now we store the token in a local file
-                    Installation.saveLoginToken(mContext, accessToken);
+                    Settings.saveAccessToken(mContext, accessToken);
                 }
             } catch (Exception e) {
                 return false;
@@ -320,7 +312,7 @@ public class AuthActivity extends Activity {
         protected Boolean doInBackground(Void... params) {
             // attempt registration against Kii Cloud
             try {
-                String id = Installation.id(mContext);
+                String id = Settings.id(mContext);
                 Log.d(TAG, "Attempting registration with id: " + id);
                 KiiUser.Builder builder = KiiUser.builderWithName(id);
                 KiiUser user = builder.build();
@@ -329,7 +321,7 @@ public class AuthActivity extends Activity {
                     Log.d(TAG, "Storing access token...");
                     String accessToken = KiiUser.getCurrentUser().getAccessToken();
                     // Now we store the token in a local file
-                    Installation.saveLoginToken(mContext, accessToken);
+                    Settings.saveAccessToken(mContext, accessToken);
                 }
             }
               catch (Exception e) {

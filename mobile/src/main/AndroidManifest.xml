@@ -20,12 +20,28 @@
             android:name=".MainActivity"
             android:label="@string/title_activity_main">
         </activity>
-
+        <service
+            android:name=".DataService"
+            android:process=":remote">
+            <intent-filter>
+                <action
+                    android:name="com.kii.demo.wearable.DataService" />
+            </intent-filter>
+        </service>
+        <receiver
+            android:name=".BootReceiver">
+            <intent-filter>
+                <action
+                    android:name="android.intent.action.BOOT_COMPLETED">
+                </action>
+            </intent-filter>
+        </receiver>
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
     </application>
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
 </manifest>

@@ -13,24 +13,29 @@ public class WearService extends TeleportService {
     @Override
     public void onCreate() {
         super.onCreate();
-        setOnGetMessageTask(new StartActivityTask());
+        setOnGetMessageTask(new ActivityManagementTask());
         //setOnGetMessageTask(new NotifyFromOnGetMessageTask());
     }
 
     //Task that shows the path of a received message
-    public class StartActivityTask extends TeleportService.OnGetMessageTask {
+    public class ActivityManagementTask extends TeleportService.OnGetMessageTask {
         @Override
         protected void onPostExecute(String  path) {
             if (path.equals("startActivity")){
-
                 Intent startIntent = new Intent(getBaseContext(), WearActivity.class);
                 startIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startIntent.putExtra("keep", true);
                 startActivity(startIntent);
+            } else if (path.equals("stopActivity")) {
+                Intent stopIntent = new Intent(getBaseContext(), WearActivity.class);
+                stopIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                stopIntent.putExtra("keep", false);
+                startActivity(stopIntent);
             } else {
                 Log.i(TAG, "Got a message with path: " + path);
             }
             //let's reset the task (otherwise it will be executed only once)
-            setOnGetMessageTask(new StartActivityTask());
+            setOnGetMessageTask(new ActivityManagementTask());
         }
     }
 
